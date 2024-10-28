@@ -1,0 +1,28 @@
+---
+title: "STAT 270 - Case Study 2 - Working Doc"
+subtitle: "Noah Lee and Jeff Kong"
+format: pdf
+editor: visual
+markdown: 
+    wrap: 72
+---
+
+```{r setup}
+#| include: false
+# Load necessary packages
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(ggformula)
+library(ggplot2) 
+library(GGally)
+tidymodels_prefer(quiet = TRUE) 
+```
+
+
+
+
+
+
+
+
