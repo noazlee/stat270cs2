@@ -7,6 +7,8 @@ markdown:
     wrap: 72
 ---
 
+WE ARE LOOKING AT 2 AND 6
+
 ```{r setup}
 #| include: false
 # Load necessary packages
@@ -19,7 +21,38 @@ library(GGally)
 tidymodels_prefer(quiet = TRUE) 
 ```
 
+```{r}
+mnist100_tbl <- read_csv("https://aloy.github.io/stat270/data/mnist.csv.gz", show_col_types = FALSE) |>
+  mutate(digit=as.factor(digit)) |>
+  filter(digit==c(2,6))
 
+dim(mnist100_tbl)
+```
+About 7.5x observations as predictor variables.
+
+```{r}
+plot_digit <- function(row) {
+  digit_mat <- row |>
+    select(-digit)|>
+    as.numeric() |>
+    matrix(nrow = 28)
+  
+  image(digit_mat[,28:1])
+}
+```
+
+```{r}
+mnist100_tbl[2,]
+```
+V values range from 0-255
+
+```{r}
+pull(mnist100_tbl[6,], digit)
+```
+
+```{r}
+plot_digit(mnist100_tbl[6,])
+```
 
 
 
