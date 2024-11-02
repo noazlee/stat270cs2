@@ -44,15 +44,16 @@ plot_digit <- function(row) {
 ```
 
 ```{r}
-pull(mnist100_tbl[1,], digit)
-pull(mnist100_tbl[2,], digit)
+pull(mnist_tbl[1,], digit)
+pull(mnist_tbl[2,], digit)
 ```
 
 ```{r}
-plot_digit(mnist100_tbl[8,])
+plot_digit(mnist_tbl[8,])
 
-plot_digit(mnist100_tbl[81,])
+plot_digit(mnist_tbl[81,])
 ```
+
 ```{r}
 ## Tester Code from the assignment doc 
 region1 <- read_csv("https://aloy.github.io/stat270/data/digits26.csv", col_names = FALSE, show_col_types = FALSE)
@@ -65,8 +66,8 @@ region2
 
 ```{r}
 ## Tester Code
-plot_region <- function(mnist100_tbl) {
-  digit_mat <- as.matrix(mnist100_tbl) * 128 # Convert tbl into matrix and assign gray=128
+plot_region <- function(mnist_tbl) {
+  digit_mat <- as.matrix(mnist_tbl) * 128 # Convert tbl into matrix and assign gray=128
 
   image(t(digit_mat)[,28:1]) #Plot the image making sure is rotated
 }
@@ -96,16 +97,16 @@ calc_prop <- function (region, row) {
 
 ```{r}
 
-calc_prop(region2, mnist100_tbl[1, 2:785])
+calc_prop(region2, mnist_tbl[1, 2:785])
 
-calc_prop(region2, mnist100_tbl[5, 2:785])
+calc_prop(region2, mnist_tbl[5, 2:785])
 
-calc_prop(region2, mnist100_tbl[13,2:785])
+calc_prop(region2, mnist_tbl[13,2:785])
 
 ```
 
 ```{r}
-(tmp_tbl <- mnist100_tbl|>
+(tmp_tbl <- mnist_tbl|>
   rowwise()|>
   mutate(area = calc_prop(region1, c_across(V1:V784))) |>
   ungroup()|>
@@ -118,8 +119,8 @@ ggplot(tmp_tbl, aes(x=digit,y=area))+
   geom_boxplot()
 
 ```
-Next steps:
-Define regions to help define each digit. 
+
+Next steps: Define regions to help define each digit.
 
 ```{r}
 region_bottom_right <- matrix(0, nrow = 28, ncol = 28)
@@ -142,15 +143,10 @@ plot_region(region_middle_left_tbl)
 
 
 ```
-, 10:10, 10:19
-```{r}
-## The only region feature we are adding into our model
-special_section <- matrix(0, nrow = 28, ncol = 28)
-special_section[9:16, 6:13] <- 1
-special_section_tbl <- as_tibble(special_section)
 
-plot_region(special_section)
-```
+, 10:10, 10:19
+
+
 
 ```{r}
 region_center <- matrix(0, nrow = 28, ncol = 28)
@@ -160,6 +156,7 @@ region_center_tbl <- as_tibble(region_center)
 plot_region(region_center_tbl)
 
 ```
+
 ```{r}
 calc_prop <- function(region, row) {
   digit_mat <- matrix(as.numeric(row), nrow = 28, byrow = TRUE)
@@ -172,16 +169,15 @@ calc_prop <- function(region, row) {
 ```
 
 ```{r}
-mnist_features <- mnist100_tbl |>
+mnist_features <- mnist_tbl |>
   mutate(
     prop_bottom_right = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom_right, row))
   )
 
 ```
 
-
 ```{r}
-mnist_features <- mnist100_tbl |>
+mnist_features <- mnist_tbl |>
   mutate(
     prop_bottom_right = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom_right, row)),
     prop_middle_left = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_middle_left, row)),
@@ -210,7 +206,9 @@ ggplot(mnist_features, aes(x = digit, y = prop_center)) +
   labs(title = "Proportion of Dark Pixels in Center Region by Digit")
 
 ```
+
 Try some more region splits
+
 ```{r}
 ##top and bottom 
 region_top <- matrix(0, nrow = 28, ncol = 28)
@@ -223,7 +221,7 @@ region_bottom_tbl <- as_tibble(region_bottom)
 ```
 
 ```{r}
-mnist_features2 <- mnist100_tbl |>
+mnist_features2 <- mnist_tbl |>
   mutate(
     prop_top = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_top, row)),
     prop_bottom = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom, row))
@@ -242,18 +240,13 @@ ggplot(mnist_features2, aes(x = digit, y = prop_bottom)) +
   geom_boxplot() +
   labs(title = "Proportion of Dark Pixels in Bottom Region by Digit")
 ```
+
 ```{r}
-
-calc_prop(mnist100_tbl[1,1000])
-
-calc_prop(mnist100_tbl[2,1000])
-
-
 ##what is the threshold for a dark pixel? 
 
 threshold <- 50 #assigned 50 for now
 
-pixel_matrix <- as.matrix(select(mnist100_tbl, -digit))
+pixel_matrix <- as.matrix(select(mnist_tbl, -digit))
 
 dark_pixels <- pixel_matrix > threshold
 
@@ -269,22 +262,12 @@ prop_dark_pixels_total <- num_dark_pixels_total / total_pixels
 prop_dark_pixels_total
 
 
-mnist_counts <- mnist100_tbl |>
+mnist_counts <- mnist_tbl |>
   mutate(num_dark_pixels_total = num_dark_pixels_total)
 
 head(mnist_counts, 10)
 
 ##summary(mnist_counts) ## hard to read, i.e don't know how to read 
-
-mnist_counts |> ## Idea from Chat 
-  group_by(digit) |>
-  summarise(
-    count = n(),
-    mean_dark_pixels = mean(num_dark_pixels_total),
-    sd_dark_pixels = sd(num_dark_pixels_total),
-    min_dark_pixels = min(num_dark_pixels_total),
-    max_dark_pixels = max(num_dark_pixels_total)
-  )
 
 ggplot(mnist_counts, aes(x = digit, y = num_dark_pixels_total)) +
   geom_boxplot() +
@@ -302,14 +285,57 @@ ggplot(mnist_counts, aes(x = digit, y = prop_dark_pixels_total)) +
     y = "Prop of Dark Pixels"
   )
 
-figit
-
 anovaTest <- aov(prop_dark_pixels_total ~ digit, data = mnist_counts)
 
 summary(anovaTest)
 
 ```
-The p value of digits is 0.00303, which is pretty significant. We decided to include this into our model as a feature. 
+
+
+```{r}
+mnist_counts['num_dark_pixels_total']
+```
+
+
+
+
+The p value of digits is 0.00303, which is pretty significant. We decided to include this into our model as a feature.
+```{r}
+## The only region feature we are adding into our model
+special_section <- matrix(0, nrow = 28, ncol = 28)
+special_section[9:16, 6:13] <- 1
+special_section_tbl <- as_tibble(special_section)
+
+plot_region(special_section)
+```
+
+
+```{r}
+
+conflicted::conflicts_prefer(base::sum)
+
+
+
+
+mnist_featureFINAL['prop_special']
+```
+
+```{r}
+mnist_tbl['countBlack'] <- mnist_counts['num_dark_pixels_total']
+
+mnist_tbl['propArea'] <- mnist_featureFINAL['prop_special']
+
+mnist_tbl <- mnist_tbl |>
+  mutate(
+    prop_special = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(special_section, row))
+  )
+
+
+mnist_tbl['prop_special']
+mnist_tbl['countBlack']
+
+```
+
 ```{r}
 data_2_6 <- mnist_features |>
   filter(digit %in% c('2', '6')) |>
@@ -318,8 +344,8 @@ data_2_6 <- mnist_features |>
 
 ```{r}
 ##split data into training and validation and testing set 
-set.seed(123)
-train_index <- createDataPartition(data_2_6$digit, p = 0.8, list = FALSE)
-train_data <- data_2_6[train_index, ]
-test_data <- data_2_6[-train_index, ]
+set.seed(11012024)
+realestate_split <- initial_split(mnist, strata = price)
+realestate_train <- training(realestate_split)
+realestate_test<- testing(realestate_split)
 ```
