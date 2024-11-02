@@ -7,6 +7,7 @@ markdown:
     wrap: 72
 ---
 
+
 ```{r setup}
 #| include: false
 # Load necessary packages
@@ -19,8 +20,40 @@ library(GGally)
 tidymodels_prefer(quiet = TRUE) 
 ```
 
+```{r}
+mnist100_tbl <- read_csv("https://aloy.github.io/stat270/data/mnist.csv.gz", show_col_types = FALSE) |>
+  mutate(digit=as.factor(digit)) |>
+  slice_head(n=100)
+dim(mnist100_tbl)
 
+```
 
+```{r}
+plot_digit <- function(row) {
+  digit_mat <- row |>
+    select(-digit)|>
+    as.numeric() |>
+    matrix(nrow = 28)
+  
+  image(digit_mat[,28:1])
+}
+
+```
+```{r}
+region1 <- read_csv("https://aloy.github.io/stat270/data/region1.csv", col_names = FALSE, show_col_types = FALSE)
+
+```
+
+```{r}
+calc_prop <- function(region, row) {
+  digit_mat <- matrix(as.numeric(row), nrow = 28, byrow = TRUE)
+  pos <- (region == 1)
+  dark_pixels <- digit_mat[pos] > 20
+  prop_dark <- sum(dark_pixels) / sum(pos)
+  return(prop_dark)
+}
+
+```
 
 
 
