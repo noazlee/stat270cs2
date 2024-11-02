@@ -7,6 +7,10 @@ markdown:
     wrap: 72
 ---
 
+<<<<<<< HEAD
+=======
+WE ARE LOOKING AT 2 AND 6
+>>>>>>> 21b683d02c01878745fbb3b2f135084ecabf3236
 
 ```{r setup}
 #| include: false
@@ -23,10 +27,18 @@ tidymodels_prefer(quiet = TRUE)
 ```{r}
 mnist100_tbl <- read_csv("https://aloy.github.io/stat270/data/mnist.csv.gz", show_col_types = FALSE) |>
   mutate(digit=as.factor(digit)) |>
+<<<<<<< HEAD
   slice_head(n=100)
 dim(mnist100_tbl)
 
 ```
+=======
+  filter(digit==c(2,6))
+
+dim(mnist100_tbl)
+```
+About 7.5x observations as predictor variables.
+>>>>>>> 21b683d02c01878745fbb3b2f135084ecabf3236
 
 ```{r}
 plot_digit <- function(row) {
@@ -37,6 +49,7 @@ plot_digit <- function(row) {
   
   image(digit_mat[,28:1])
 }
+<<<<<<< HEAD
 
 ```
 ```{r}
@@ -54,6 +67,23 @@ calc_prop <- function(region, row) {
 }
 
 ```
+=======
+```
+
+```{r}
+mnist100_tbl[2,]
+```
+V values range from 0-255
+
+```{r}
+pull(mnist100_tbl[6,], digit)
+```
+
+```{r}
+plot_digit(mnist100_tbl[6,])
+```
+
+>>>>>>> 21b683d02c01878745fbb3b2f135084ecabf3236
 
 
 
