@@ -51,7 +51,12 @@ pull(mnist100_tbl[6,], digit)
 ```
 
 ```{r}
-plot_digit(mnist100_tbl[6,])
+plot_digit(mnist100_tbl[4,])
+```
+
+
+```{r}
+plot_digit(mnist100_tbl[11,])
 ```
 
 
