@@ -13,8 +13,11 @@ library(dplyr)
 library(ggformula)
 library(ggplot2) 
 library(GGally)
-##install.packages("mosaic")
+install.packages("vip")
 library(mosaic)
+library(ranger)
+library(vip)
+library(caret)
 tidymodels_prefer(quiet = TRUE) 
 ```
 
@@ -337,15 +340,64 @@ mnist_tbl['countBlack']
 ```
 
 ```{r}
-data_2_6 <- mnist_features |>
-  filter(digit %in% c('2', '6')) |>
-  mutate(digit = factor(digit))
+mnist_tbl
 ```
 
 ```{r}
 ##split data into training and validation and testing set 
 set.seed(11012024)
-realestate_split <- initial_split(mnist, strata = price)
-realestate_train <- training(realestate_split)
-realestate_test<- testing(realestate_split)
+mnist_split <- initial_split(mnist_tbl, prop = 0.7, strata = digit)
+mnist_train <- training(mnist_split)
+mnist_tests<- testing(mnist_split)
+
+mnist_test_val_split <- initial_split(mnist_tbl, prop = 0.15, strata = digit)
+mnist_validation <- training(mnist_test_val_split)
+mnist_testing <- testing(mnist_test_val_split)
+
+```
+
+```{r}
+## random forest?
+rf_spec <- 
+  rand_forest(trees = 100, mtry = 4) |>            
+  set_mode("classification") |>                        
+  set_engine("ranger", importance = "impurity")
+
+rf_model <- rf_spec |> 
+  fit(digit ~ ., data = mnist_train)
+
+rf_model
+```
+```{r}
+rf_oob_rmse <- rf_model$fit$prediction.error
+cat("Out-Of-Bag (OOB) RMSE:", rf_oob_rmse, "\n")
+
+mnist_train_preds <- predict(rf_model, new_data = mnist_train)$.pred_class
+
+# Calculate Accuracy
+train_accuracy <- accuracy_vec(truth = mnist_train$digit, estimate = mnist_train_preds)
+cat("Training Accuracy:", train_accuracy, "\n")
+```
+```{r}
+confusionMatrix(data = mnist_train_preds, reference = mnist_train$digit)
+```
+
+```{r}
+#cv cross validation 10 folds
+set.seed(11012024)
+cv_folds <- vfold_cv(mnist_train, v = 10, strata = digit)
+
+rf_workflow <- workflow() |>
+  add_model(rf_spec) |>
+  add_formula(digit ~ .)
+
+rf_results <- rf_workflow |>
+  fit_resamples(
+    resamples = cv_folds,
+    metrics = metric_set(roc_auc), ##also accuracy and other metrics
+    control = control_resamples(save_pred = TRUE)
+  )
+
+
+collect_metrics(rf_results)
 ```
