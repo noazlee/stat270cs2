@@ -56,29 +56,6 @@ plot_digit(mnist_tbl[8,])
 
 plot_digit(mnist_tbl[81,])
 ```
-
-```{r}
-## Tester Code from the assignment doc 
-region1 <- read_csv("https://aloy.github.io/stat270/data/digits26.csv", col_names = FALSE, show_col_types = FALSE)
-region1
-
-region2 <- read_csv("https://aloy.github.io/stat270/data/region1.csv", col_names = FALSE, show_col_types = FALSE)
-
-region2
-```
-
-```{r}
-## Tester Code
-plot_region <- function(mnist_tbl) {
-  digit_mat <- as.matrix(mnist_tbl) * 128 # Convert tbl into matrix and assign gray=128
-
-  image(t(digit_mat)[,28:1]) #Plot the image making sure is rotated
-}
-
-plot_region(region1)
-
-```
-
 ```{r}
 calc_prop <- function (region, row) {
   # Take row from mnist and transform into a "digit" matrix
@@ -99,68 +76,6 @@ calc_prop <- function (region, row) {
 ```
 
 ```{r}
-
-calc_prop(region2, mnist_tbl[1, 2:785])
-
-calc_prop(region2, mnist_tbl[5, 2:785])
-
-calc_prop(region2, mnist_tbl[13,2:785])
-
-```
-
-```{r}
-(tmp_tbl <- mnist_tbl|>
-  rowwise()|>
-  mutate(area = calc_prop(region1, c_across(V1:V784))) |>
-  ungroup()|>
-  select(digit,area))
-
-```
-
-```{r}
-ggplot(tmp_tbl, aes(x=digit,y=area))+
-  geom_boxplot()
-
-```
-
-Next steps: Define regions to help define each digit.
-
-```{r}
-region_bottom_right <- matrix(0, nrow = 28, ncol = 28)
-
-# Set the bottom right quarter to 1s
-region_bottom_right[15:28, 15:28] <- 1
-
-# Convert to a tibble for plotting if needed
-region_bottom_right_tbl <- as_tibble(region_bottom_right)
-
-plot_region(region_bottom_right_tbl)
-```
-
-```{r}
-region_middle_left <- matrix(0, nrow = 28, ncol = 28)
-region_middle_left[10:20, 1:14] <- 1
-region_middle_left_tbl <- as_tibble(region_middle_left)
-
-plot_region(region_middle_left_tbl)
-
-
-```
-
-, 10:10, 10:19
-
-
-
-```{r}
-region_center <- matrix(0, nrow = 28, ncol = 28)
-region_center[10:19, 10:19] <- 1
-region_center_tbl <- as_tibble(region_center)
-
-plot_region(region_center_tbl)
-
-```
-
-```{r}
 calc_prop <- function(region, row) {
   digit_mat <- matrix(as.numeric(row), nrow = 28, byrow = TRUE)
   pos <- (region == 1)
@@ -169,79 +84,6 @@ calc_prop <- function(region, row) {
   return(prop_dark)
 }
 
-```
-
-```{r}
-mnist_features <- mnist_tbl |>
-  mutate(
-    prop_bottom_right = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom_right, row))
-  )
-
-```
-
-```{r}
-mnist_features <- mnist_tbl |>
-  mutate(
-    prop_bottom_right = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom_right, row)),
-    prop_middle_left = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_middle_left, row)),
-    prop_center = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_center, row))
-  )
-
-mnist_features
-
-mnist100_tbl
-```
-
-```{r}
-# Bottom Right Region
-ggplot(mnist_features, aes(x = digit, y = prop_bottom_right)) +
-  geom_boxplot() +
-  labs(title = "Proportion of Dark Pixels in Bottom Right Region by Digit")
-
-# Middle Left Region
-ggplot(mnist_features, aes(x = digit, y = prop_middle_left)) +
-  geom_boxplot() +
-  labs(title = "Proportion of Dark Pixels in Middle Left Region by Digit")
-
-# Center Region
-ggplot(mnist_features, aes(x = digit, y = prop_center)) +
-  geom_boxplot() +
-  labs(title = "Proportion of Dark Pixels in Center Region by Digit")
-
-```
-
-Try some more region splits
-
-```{r}
-##top and bottom 
-region_top <- matrix(0, nrow = 28, ncol = 28)
-region_top[1:14, ] <- 1 
-region_top_tbl <- as_tibble(region_top)
-
-region_bottom <- matrix(0, nrow = 28, ncol = 28)
-region_bottom[15:28, ] <- 1 
-region_bottom_tbl <- as_tibble(region_bottom)
-```
-
-```{r}
-mnist_features2 <- mnist_tbl |>
-  mutate(
-    prop_top = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_top, row)),
-    prop_bottom = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(region_bottom, row))
-  )
-
-```
-
-```{r}
-## Top region
-ggplot(mnist_features2, aes(x = digit, y = prop_top)) +
-  geom_boxplot() +
-  labs(title = "Proportion of Dark Pixels in Top Region by Digit")
-
-# bottom Region
-ggplot(mnist_features2, aes(x = digit, y = prop_bottom)) +
-  geom_boxplot() +
-  labs(title = "Proportion of Dark Pixels in Bottom Region by Digit")
 ```
 
 ```{r}
@@ -299,9 +141,6 @@ summary(anovaTest)
 mnist_counts['num_dark_pixels_total']
 ```
 
-
-
-
 The p value of digits is 0.00303, which is pretty significant. We decided to include this into our model as a feature.
 ```{r}
 ## The only region feature we are adding into our model
@@ -311,15 +150,8 @@ special_section_tbl <- as_tibble(special_section)
 
 plot_region(special_section)
 ```
-
-
 ```{r}
-
 conflicted::conflicts_prefer(base::sum)
-
-
-
-
 mnist_featureFINAL['prop_special']
 ```
 
@@ -340,6 +172,7 @@ mnist_tbl['countBlack']
 ```
 
 ```{r}
+# to see the new columns added
 mnist_tbl
 ```
 
