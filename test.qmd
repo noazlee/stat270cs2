@@ -367,3 +367,14 @@ yardstick::roc_auc(
 )
 ```
 KNN performs well but we aren't able to get the most important variables like with random forest.
+
+```{r}
+misclassified_records_knn <- knn_predictions |>
+  filter(.pred_class != digit)
+
+misclassified_records_knn
+```
+```{r}
+plot_digit(misclassified_records_knn[7,])
+```
+KNN seemed to misclassify 2 as 6 more oftern while random forest misclassified 6 as 2 more often.
