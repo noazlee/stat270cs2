@@ -294,4 +294,12 @@ misclassified_records
 plot_digit(misclassified_records[1,])
 ```
 
+```{r}
+plot_digit(misclassified_records[8,])
+```
+
+The model was wrong when:
+- The digit was rotated
+- The digit had unusual thickness
+- The digit was badly drawn and hard to recognise as a human
   
