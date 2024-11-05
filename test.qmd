@@ -244,6 +244,8 @@ yardstick::roc_auc(
 vip::vip(rf_fit)
 ```
 
+Most important variables: V243, propArea, V320, V299, V271, V376, V374, V346, V319, V348
+
 ```{r}
 rf_spec <- 
   rand_forest(trees = 200, mtry = 4) |>
@@ -295,7 +297,7 @@ plot_digit(misclassified_records[1,])
 ```
 
 ```{r}
-plot_digit(misclassified_records[8,])
+plot_digit(misclassified_records[,])
 ```
 
 The model was wrong when:
@@ -303,3 +305,65 @@ The model was wrong when:
 - The digit had unusual thickness
 - The digit was badly drawn and hard to recognise as a human
   
+  
+Trying a diff model (KNN):
+```{r}
+knn_model <- nearest_neighbor(neighbors = tune()) |> 
+    set_engine("kknn") |>
+    set_mode("classification")
+
+knn_rec <- recipe(formula = digit ~ ., data = mnist_train) |> 
+  step_zv(all_predictors()) |>
+  step_normalize(all_predictors())
+
+knn_wf <- workflow() |> 
+    add_recipe(knn_rec) |>
+    add_model(knn_model) 
+
+set.seed(11012024)
+
+my_folds <- vfold_cv(mnist_train, v = 5) 
+
+k_grid <- grid_regular(neighbors(range = c(3, 19)), levels = 17) 
+
+cv_results <- tune_grid(object = knn_wf, resamples = my_folds, grid = k_grid) 
+```
+
+```{r}
+autoplot(cv_results,  metric = "accuracy") 
+show_best(cv_results, metric = "accuracy")
+```
+
+```{r}
+knn_model_final <- nearest_neighbor(neighbors = 7) |> 
+    set_engine("kknn") |>
+    set_mode("classification")
+
+knn_rec <- recipe(formula = digit ~ ., data = mnist_train) |> 
+  step_zv(all_predictors()) |>
+  step_normalize(all_predictors())
+
+knn_wf <- workflow() |> 
+    add_recipe(knn_rec) |>
+    add_model(knn_model_final) 
+
+knn_fit <- knn_wf |> fit(data=mnist_train)
+```
+
+```{r}
+knn_predictions <- augment(knn_fit, new_data=mnist_validation)
+```
+
+```{r}
+confusion_matrix <- table(Predicted = knn_predictions$.pred_class, True = knn_predictions$digit)
+confusion_matrix
+```
+```{r}
+yardstick::roc_auc(
+  data = knn_predictions,
+  digit,
+  .pred_2,
+  event_level = "first"
+)
+```
+KNN performs well but we aren't able to get the most important variables like with random forest.
