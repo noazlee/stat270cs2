@@ -283,5 +283,15 @@ plot_digit(mnist_tbl[8,])
 plot_digit(mnist_tbl[81,])
 ```
 
+Investigating wrong predictions in our model:
+```{r}
+misclassified_records <- rf_pred |>
+  filter(.pred_class != digit)
 
+misclassified_records
+```
+```{r}
+plot_digit(misclassified_records[1,])
+```
 
+  
