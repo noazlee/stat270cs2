@@ -150,8 +150,17 @@ special_section_tbl <- as_tibble(special_section)
 
 plot_region(special_section)
 ```
+
+
 ```{r}
+
 conflicted::conflicts_prefer(base::sum)
+
+mnist_featureFINAL <- mnist_tbl |>
+  mutate(
+    prop_special = apply(select(cur_data(), V1:V784), 1, function(row) calc_prop(special_section, row)) 
+  )
+
 mnist_featureFINAL['prop_special']
 ```
 
@@ -172,7 +181,6 @@ mnist_tbl['countBlack']
 ```
 
 ```{r}
-# to see the new columns added
 mnist_tbl
 ```
 
