@@ -191,54 +191,97 @@ mnist_split <- initial_split(mnist_tbl, prop = 0.7, strata = digit)
 mnist_train <- training(mnist_split)
 mnist_tests<- testing(mnist_split)
 
-mnist_test_val_split <- initial_split(mnist_tbl, prop = 0.15, strata = digit)
+mnist_test_val_split <- initial_split(mnist_tests, prop = 0.5, strata = digit)
 mnist_validation <- training(mnist_test_val_split)
 mnist_testing <- testing(mnist_test_val_split)
 
 ```
 
+Random Forest Model:
 ```{r}
-## random forest?
 rf_spec <- 
-  rand_forest(trees = 100, mtry = 4) |>            
-  set_mode("classification") |>                        
+  rand_forest(trees = 200, mtry = 4) |>
+  set_mode("classification") |>
   set_engine("ranger", importance = "impurity")
 
-rf_model <- rf_spec |> 
-  fit(digit ~ ., data = mnist_train)
+ranger_recipe <- 
+  recipe(formula = digit ~ ., data = mnist_train)
 
-rf_model
-```
-```{r}
-rf_oob_rmse <- rf_model$fit$prediction.error
-cat("Out-Of-Bag (OOB) RMSE:", rf_oob_rmse, "\n")
+ranger_workflow <- workflow() |>
+  add_recipe(ranger_recipe) |>
+  add_model(rf_spec) 
 
-mnist_train_preds <- predict(rf_model, new_data = mnist_train)$.pred_class
 
-# Calculate Accuracy
-train_accuracy <- accuracy_vec(truth = mnist_train$digit, estimate = mnist_train_preds)
-cat("Training Accuracy:", train_accuracy, "\n")
-```
-```{r}
-confusionMatrix(data = mnist_train_preds, reference = mnist_train$digit)
+(rf_fit <- fit(ranger_workflow, data = mnist_train))
 ```
 
 ```{r}
-#cv cross validation 10 folds
-set.seed(11012024)
-cv_folds <- vfold_cv(mnist_train, v = 10, strata = digit)
-
-rf_workflow <- workflow() |>
-  add_model(rf_spec) |>
-  add_formula(digit ~ .)
-
-rf_results <- rf_workflow |>
-  fit_resamples(
-    resamples = cv_folds,
-    metrics = metric_set(roc_auc), ##also accuracy and other metrics
-    control = control_resamples(save_pred = TRUE)
-  )
-
-
-collect_metrics(rf_results)
+rf_pred <- augment(rf_fit, new_data=mnist_validation)
 ```
+
+```{r}
+rf_pred
+```
+
+```{r}
+confusion_matrix <- table(Predicted = rf_pred$.pred_class, True = rf_pred$digit)
+confusion_matrix
+```
+
+
+```{r}
+yardstick::roc_auc(
+  data = rf_pred,
+  digit,
+  .pred_2,
+  event_level = "first"
+)
+```
+1 - 0.000467 = 0.9995
+
+
+```{r}
+vip::vip(rf_fit)
+```
+
+```{r}
+rf_spec <- 
+  rand_forest(trees = 200, mtry = 4) |>
+  set_mode("classification") |>
+  set_engine("ranger", importance = "impurity")
+
+ranger_recipe <- 
+  recipe(formula = digit ~ ., data = mnist_train)
+
+ranger_workflow <- workflow() |>
+  add_recipe(ranger_recipe) |>
+  add_model(rf_spec) 
+
+
+(rf_fit <- fit(ranger_workflow, data = mnist_train))
+```
+
+
+```{r}
+plot_digit2 <- function(row,  highlight_pixels = c(243, 320, 299, 271, 376, 374, 346, 319, 348)) {
+  digit_mat <- matrix(0, nrow = 28, ncol = 28)
+  
+  digit_mat[highlight_pixels] <- 1
+  
+  image(digit_mat[,28:1])
+}
+```
+
+```{r}
+plot_digit2(mnist_tbl[8,])
+```
+
+
+```{r}
+plot_digit(mnist_tbl[8,])
+
+plot_digit(mnist_tbl[81,])
+```
+
+
+
