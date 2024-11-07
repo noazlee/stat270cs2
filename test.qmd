@@ -175,7 +175,7 @@ mnist_tbl <- mnist_tbl |>
   )
 
 
-mnist_tbl['prop_special']
+mnist_tbl['propArea']
 mnist_tbl['countBlack']
 
 ```
@@ -378,3 +378,37 @@ misclassified_records_knn
 plot_digit(misclassified_records_knn[7,])
 ```
 KNN seemed to misclassify 2 as 6 more oftern while random forest misclassified 6 as 2 more often.
+
+Testing RF model on the test set:
+```{r}
+rf_pred_test <- augment(rf_fit, new_data=mnist_testing)
+```
+
+```{r}
+rf_pred_test
+```
+```{r}
+confusion_matrix <- table(Predicted = rf_pred_test$.pred_class, True = rf_pred_test$digit)
+confusion_matrix
+```
+
+```{r}
+yardstick::roc_auc(
+  data = rf_pred_test,
+  digit,
+  .pred_2,
+  event_level = "first"
+)
+```
+1-0.000148
+
+```{r}
+misclassified_records_test <- rf_pred_test |>
+  filter(.pred_class != digit)
+
+misclassified_records_test
+```
+
+```{r}
+plot_digit(misclassified_records_test[8,])
+```
