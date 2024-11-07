@@ -13,7 +13,7 @@ library(dplyr)
 library(ggformula)
 library(ggplot2) 
 library(GGally)
-install.packages("vip")
+##install.packages("vip")
 library(mosaic)
 library(ranger)
 library(vip)
@@ -56,6 +56,7 @@ plot_digit(mnist_tbl[8,])
 
 plot_digit(mnist_tbl[81,])
 ```
+
 ```{r}
 calc_prop <- function (region, row) {
   # Take row from mnist and transform into a "digit" matrix
@@ -136,12 +137,12 @@ summary(anovaTest)
 
 ```
 
-
 ```{r}
 mnist_counts['num_dark_pixels_total']
 ```
 
 The p value of digits is 0.00303, which is pretty significant. We decided to include this into our model as a feature.
+
 ```{r}
 ## The only region feature we are adding into our model
 special_section <- matrix(0, nrow = 28, ncol = 28)
@@ -150,7 +151,6 @@ special_section_tbl <- as_tibble(special_section)
 
 plot_region(special_section)
 ```
-
 
 ```{r}
 
@@ -198,6 +198,7 @@ mnist_testing <- testing(mnist_test_val_split)
 ```
 
 Random Forest Model:
+
 ```{r}
 rf_spec <- 
   rand_forest(trees = 200, mtry = 4) |>
@@ -228,7 +229,6 @@ confusion_matrix <- table(Predicted = rf_pred$.pred_class, True = rf_pred$digit)
 confusion_matrix
 ```
 
-
 ```{r}
 yardstick::roc_auc(
   data = rf_pred,
@@ -237,32 +237,14 @@ yardstick::roc_auc(
   event_level = "first"
 )
 ```
-1 - 0.000467 = 0.9995
 
+1 - 0.000467 = 0.9995
 
 ```{r}
 vip::vip(rf_fit)
 ```
 
 Most important variables: V243, propArea, V320, V299, V271, V376, V374, V346, V319, V348
-
-```{r}
-rf_spec <- 
-  rand_forest(trees = 200, mtry = 4) |>
-  set_mode("classification") |>
-  set_engine("ranger", importance = "impurity")
-
-ranger_recipe <- 
-  recipe(formula = digit ~ ., data = mnist_train)
-
-ranger_workflow <- workflow() |>
-  add_recipe(ranger_recipe) |>
-  add_model(rf_spec) 
-
-
-(rf_fit <- fit(ranger_workflow, data = mnist_train))
-```
-
 
 ```{r}
 plot_digit2 <- function(row,  highlight_pixels = c(243, 320, 299, 271, 376, 374, 346, 319, 348)) {
@@ -278,7 +260,6 @@ plot_digit2 <- function(row,  highlight_pixels = c(243, 320, 299, 271, 376, 374,
 plot_digit2(mnist_tbl[8,])
 ```
 
-
 ```{r}
 plot_digit(mnist_tbl[8,])
 
@@ -286,12 +267,14 @@ plot_digit(mnist_tbl[81,])
 ```
 
 Investigating wrong predictions in our model:
+
 ```{r}
 misclassified_records <- rf_pred |>
   filter(.pred_class != digit)
 
 misclassified_records
 ```
+
 ```{r}
 plot_digit(misclassified_records[1,])
 ```
@@ -300,13 +283,100 @@ plot_digit(misclassified_records[1,])
 plot_digit(misclassified_records[,])
 ```
 
-The model was wrong when:
-- The digit was rotated
-- The digit had unusual thickness
-- The digit was badly drawn and hard to recognise as a human
-  
-  
-Trying a diff model (KNN):
+The model was wrong when: - The digit was rotated - The digit had unusual thickness - The digit was badly drawn and hard to recognise as a human
+
+Tuning the Random Forest to get the right amount of trees: 
+
+```{r}
+
+ranger_recipe <- 
+  recipe(formula = digit ~ ., data = mnist_train)
+
+ranger_folds <- vfold_cv(mnist_train, v = 10, strata = digit)
+
+rf_spec_tune <- 
+rand_forest(trees = tune(), mtry = tune()) |>
+set_mode("classification") |>
+set_engine("ranger", importance = "impurity")
+
+ranger_workflow_tune <- 
+  workflow() |>
+  add_recipe(ranger_recipe) |>
+  add_model(rf_spec_tune) 
+
+ranger_grid <- grid_regular(
+  trees(range = c(50, 150)),   
+  mtry(range = c(21, 30)), # How do you chose these values
+  levels = 5
+)
+
+ranger_tune <- tune_grid(
+  ranger_workflow_tune, 
+  resamples = ranger_folds, 
+  grid = ranger_grid
+)
+
+best_cc <- select_by_one_std_err(
+  ranger_tune, 
+  metric = "roc_auc", 
+  trees, 
+  mtry
+)
+
+best_cc
+```
+best mtry = 23
+best trees = 75
+
+updated tuned best random forest model
+```{r}
+rf_spec_best <- 
+  rand_forest(trees = 75, mtry = 23) |>
+  set_mode("classification") |>
+  set_engine("ranger", importance = "impurity")
+
+ranger_recipe <- 
+  recipe(formula = digit ~ ., data = mnist_train) |>
+  step_rm(prop_special)
+
+ranger_workflow <- workflow() |>
+  add_recipe(ranger_recipe) |>
+  add_model(rf_spec_best) 
+
+
+(rf_fit_best <- fit(ranger_workflow, data = mnist_train))
+```
+
+```{r}
+rf_pred_best <- augment(rf_fit_best, new_data = mnist_validation)
+```
+
+```{r}
+rf_pred_best
+```
+
+```{r}
+confusion_matrix_best <- table(Predicted = rf_pred_best$.pred_class, True = rf_pred_best$digit)
+confusion_matrix_best
+```
+
+```{r}
+yardstick::roc_auc(
+  data = rf_pred_best,
+  digit,
+  .pred_2,
+  event_level = "first"
+)
+```
+roc_auc = 0.9996967 (A little bit worse but it is whatever)
+
+```{r}
+vip::vip(rf_fit_best)
+```
+Most important variables: V348, propArea, V375, V347, V374, V270, V321, V373, V320, V625
+
+Trying a diff model (KNN): 
+
 ```{r}
 knn_model <- nearest_neighbor(neighbors = tune()) |> 
     set_engine("kknn") |>
@@ -358,6 +428,7 @@ knn_predictions <- augment(knn_fit, new_data=mnist_validation)
 confusion_matrix <- table(Predicted = knn_predictions$.pred_class, True = knn_predictions$digit)
 confusion_matrix
 ```
+
 ```{r}
 yardstick::roc_auc(
   data = knn_predictions,
@@ -366,6 +437,7 @@ yardstick::roc_auc(
   event_level = "first"
 )
 ```
+
 KNN performs well but we aren't able to get the most important variables like with random forest.
 
 ```{r}
@@ -374,12 +446,15 @@ misclassified_records_knn <- knn_predictions |>
 
 misclassified_records_knn
 ```
+
 ```{r}
 plot_digit(misclassified_records_knn[7,])
 ```
+
 KNN seemed to misclassify 2 as 6 more oftern while random forest misclassified 6 as 2 more often.
 
 Testing RF model on the test set:
+
 ```{r}
 rf_pred_test <- augment(rf_fit, new_data=mnist_testing)
 ```
@@ -387,6 +462,7 @@ rf_pred_test <- augment(rf_fit, new_data=mnist_testing)
 ```{r}
 rf_pred_test
 ```
+
 ```{r}
 confusion_matrix <- table(Predicted = rf_pred_test$.pred_class, True = rf_pred_test$digit)
 confusion_matrix
@@ -400,7 +476,8 @@ yardstick::roc_auc(
   event_level = "first"
 )
 ```
-1-0.000148
+
+1-0.000148 = 0.999852
 
 ```{r}
 misclassified_records_test <- rf_pred_test |>
