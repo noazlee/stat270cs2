@@ -185,6 +185,11 @@ mnist_tbl
 ```
 
 ```{r}
+mnist_tbl$prop_special <- NULL
+```
+
+
+```{r}
 ##split data into training and validation and testing set 
 set.seed(11012024)
 mnist_split <- initial_split(mnist_tbl, prop = 0.7, strata = digit)
@@ -247,7 +252,7 @@ vip::vip(rf_fit)
 Most important variables: V243, propArea, V320, V299, V271, V376, V374, V346, V319, V348
 
 ```{r}
-plot_digit2 <- function(row,  highlight_pixels = c(243, 320, 299, 271, 376, 374, 346, 319, 348)) {
+plot_digit2 <- function(row,  highlight_pixels = c(346, 298, 244, 348, 376, 270, 271, 375, 272, 374)) {
   digit_mat <- matrix(0, nrow = 28, ncol = 28)
   
   digit_mat[highlight_pixels] <- 1
@@ -280,7 +285,7 @@ plot_digit(misclassified_records[1,])
 ```
 
 ```{r}
-plot_digit(misclassified_records[,])
+plot_digit(misclassified_records[2,])
 ```
 
 The model was wrong when: - The digit was rotated - The digit had unusual thickness - The digit was badly drawn and hard to recognise as a human
@@ -288,6 +293,7 @@ The model was wrong when: - The digit was rotated - The digit had unusual thickn
 Tuning the Random Forest to get the right amount of trees: 
 
 ```{r}
+set.seed(11012024)
 
 ranger_recipe <- 
   recipe(formula = digit ~ ., data = mnist_train)
@@ -325,19 +331,18 @@ best_cc <- select_by_one_std_err(
 
 best_cc
 ```
-best mtry = 23
-best trees = 75
+best mtry = 21
+best trees = 125
 
 updated tuned best random forest model
 ```{r}
 rf_spec_best <- 
-  rand_forest(trees = 75, mtry = 23) |>
+  rand_forest(trees = 125, mtry = 21) |>
   set_mode("classification") |>
   set_engine("ranger", importance = "impurity")
 
 ranger_recipe <- 
-  recipe(formula = digit ~ ., data = mnist_train) |>
-  step_rm(prop_special)
+  recipe(formula = digit ~ ., data = mnist_train)
 
 ranger_workflow <- workflow() |>
   add_recipe(ranger_recipe) |>
@@ -373,7 +378,7 @@ roc_auc = 0.9996967 (A little bit worse but it is whatever)
 ```{r}
 vip::vip(rf_fit_best)
 ```
-Most important variables: V348, propArea, V375, V347, V374, V270, V321, V373, V320, V625
+Most important variables: V346, V298, 244, V348, V376, V270, V271, V375, V272, V374
 
 Trying a diff model (KNN): 
 
