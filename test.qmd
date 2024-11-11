@@ -22,6 +22,7 @@ tidymodels_prefer(quiet = TRUE)
 ```
 
 ```{r}
+# Loading data and filtering
 mnist100_tbl <- read_csv("https://aloy.github.io/stat270/data/digits26.csv", show_col_types = FALSE) |>
   mutate(digit=as.factor(digit)) |>
   slice_head(n=100)
@@ -36,6 +37,7 @@ dim(mnist_tbl)
 ```
 
 ```{r}
+# function to plot digit
 plot_digit <- function(row) {
   digit_mat <- row |>
     select(-digit)|>
@@ -47,17 +49,13 @@ plot_digit <- function(row) {
 ```
 
 ```{r}
-pull(mnist_tbl[1,], digit)
-pull(mnist_tbl[2,], digit)
-```
-
-```{r}
 plot_digit(mnist_tbl[8,])
 
 plot_digit(mnist_tbl[81,])
 ```
 
 ```{r}
+# Function to get proportion of dark pixels in the grid
 calc_prop <- function (region, row) {
   # Take row from mnist and transform into a "digit" matrix
   digit_mat <-  row |>
@@ -69,7 +67,7 @@ calc_prop <- function (region, row) {
   pos <- (region==1)
   
   # Subset "digit" to the positions and count dark pixels (grey>20)
-  dark <- digit_mat[pos] > 20 
+  dark <- digit_mat[pos] > 50
   
   # Return proportion of dark pixels of "image" in "region"
   return(sum(dark) / sum(pos))
@@ -80,7 +78,7 @@ calc_prop <- function (region, row) {
 calc_prop <- function(region, row) {
   digit_mat <- matrix(as.numeric(row), nrow = 28, byrow = TRUE)
   pos <- (region == 1)
-  dark_pixels <- digit_mat[pos] > 20  # Threshold for darkness
+  dark_pixels <- digit_mat[pos] > 50  # Threshold for darkness
   prop_dark <- sum(dark_pixels) / sum(pos)
   return(prop_dark)
 }
@@ -113,8 +111,8 @@ mnist_counts <- mnist_tbl |>
 
 head(mnist_counts, 10)
 
-##summary(mnist_counts) ## hard to read, i.e don't know how to read 
 
+# Plot to see if dark pixels is statistically discernible across digits
 ggplot(mnist_counts, aes(x = digit, y = num_dark_pixels_total)) +
   geom_boxplot() +
   labs(
@@ -137,10 +135,6 @@ summary(anovaTest)
 
 ```
 
-```{r}
-mnist_counts['num_dark_pixels_total']
-```
-
 The p value of digits is 0.00303, which is pretty significant. We decided to include this into our model as a feature.
 
 ```{r}
@@ -153,7 +147,7 @@ plot_region(special_section)
 ```
 
 ```{r}
-
+# Adding to our DF
 conflicted::conflicts_prefer(base::sum)
 
 mnist_featureFINAL <- mnist_tbl |>
@@ -181,10 +175,7 @@ mnist_tbl['countBlack']
 ```
 
 ```{r}
-mnist_tbl
-```
-
-```{r}
+# Removing unnecessary column
 mnist_tbl$prop_special <- NULL
 ```
 
@@ -199,100 +190,18 @@ mnist_tests<- testing(mnist_split)
 mnist_test_val_split <- initial_split(mnist_tests, prop = 0.5, strata = digit)
 mnist_validation <- training(mnist_test_val_split)
 mnist_testing <- testing(mnist_test_val_split)
-
 ```
 
-Random Forest Model:
-
-```{r}
-rf_spec <- 
-  rand_forest(trees = 200, mtry = 4) |>
-  set_mode("classification") |>
-  set_engine("ranger", importance = "impurity")
-
-ranger_recipe <- 
-  recipe(formula = digit ~ ., data = mnist_train)
-
-ranger_workflow <- workflow() |>
-  add_recipe(ranger_recipe) |>
-  add_model(rf_spec) 
-
-
-(rf_fit <- fit(ranger_workflow, data = mnist_train))
-```
-
-```{r}
-rf_pred <- augment(rf_fit, new_data=mnist_validation)
-```
-
-```{r}
-rf_pred
-```
-
-```{r}
-confusion_matrix <- table(Predicted = rf_pred$.pred_class, True = rf_pred$digit)
-confusion_matrix
-```
-
-```{r}
-yardstick::roc_auc(
-  data = rf_pred,
-  digit,
-  .pred_2,
-  event_level = "first"
-)
-```
-
-1 - 0.000467 = 0.9995
-
-```{r}
-vip::vip(rf_fit)
-```
-
-Most important variables: V243, propArea, V320, V299, V271, V376, V374, V346, V319, V348
-
-```{r}
-plot_digit2 <- function(row,  highlight_pixels = c(346, 298, 244, 348, 376, 270, 271, 375, 272, 374)) {
-  digit_mat <- matrix(0, nrow = 28, ncol = 28)
-  
-  digit_mat[highlight_pixels] <- 1
-  
-  image(digit_mat[,28:1])
-}
-```
-
-```{r}
-plot_digit2(mnist_tbl[8,])
-```
-
-```{r}
-plot_digit(mnist_tbl[8,])
-
-plot_digit(mnist_tbl[81,])
-```
 
 Investigating wrong predictions in our model:
 
-```{r}
-misclassified_records <- rf_pred |>
-  filter(.pred_class != digit)
-
-misclassified_records
-```
-
-```{r}
-plot_digit(misclassified_records[1,])
-```
-
-```{r}
-plot_digit(misclassified_records[2,])
-```
 
 The model was wrong when: - The digit was rotated - The digit had unusual thickness - The digit was badly drawn and hard to recognise as a human
 
 Tuning the Random Forest to get the right amount of trees: 
 
 ```{r}
+# Cross validation to get the right params
 set.seed(11012024)
 
 ranger_recipe <- 
@@ -312,7 +221,7 @@ ranger_workflow_tune <-
 
 ranger_grid <- grid_regular(
   trees(range = c(50, 150)),   
-  mtry(range = c(21, 30)), # How do you chose these values
+  mtry(range = c(21, 30)), 
   levels = 5
 )
 
@@ -366,6 +275,15 @@ confusion_matrix_best
 ```
 
 ```{r}
+weekly_roc = roc_curve(bind_cols(weekly_preds=rf_pred_best$.pred_2,real_class=rf_pred_best$digit),
+                       real_class,
+                       weekly_preds,
+                       event_level = "first")
+autoplot(weekly_roc)
+```
+
+
+```{r}
 yardstick::roc_auc(
   data = rf_pred_best,
   digit,
@@ -380,7 +298,33 @@ vip::vip(rf_fit_best)
 ```
 Most important variables: V346, V298, 244, V348, V376, V270, V271, V375, V272, V374
 
-Trying a diff model (KNN): 
+```{r}
+# Function to plot the 'important' pixels
+plot_digit2 <- function(row,  highlight_pixels = c(346, 298, 244, 348, 376, 270, 271, 375, 272, 374)) {
+  digit_mat <- matrix(0, nrow = 28, ncol = 28)
+  
+  digit_mat[highlight_pixels] <- 1
+  
+  image(digit_mat[,28:1])
+}
+```
+
+```{r}
+plot_digit2(mnist_tbl[8,])
+```
+
+```{r}
+misclassified_records_final <- rf_pred_best |>
+  filter(.pred_class != digit)
+
+misclassified_records_final
+```
+
+
+```{r}
+plot_digit(misclassified_records_final[4,])
+```
+KNN: 
 
 ```{r}
 knn_model <- nearest_neighbor(neighbors = tune()) |> 
